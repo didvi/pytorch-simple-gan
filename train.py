@@ -5,9 +5,6 @@ import torch
 import torch.nn as nn
 import wandb
 
-from models import Discriminator, Generator
-from utils import generate_even_data, convert_float_matrix_to_int_list
-
 
 def train(
     generator,
