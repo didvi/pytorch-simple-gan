@@ -14,6 +14,7 @@ def train(
     data_loader,
     batch_size,
     input_length,
+    img_shape: tuple,
     epochs: int = 3,
 ) -> Tuple[nn.Module]:
     """Trains the even GAN
@@ -28,6 +29,8 @@ def train(
     """
     # loss is binary cross entropy loss
     loss = nn.BCELoss()
+    img_w = img_shape[0]
+    img_h = img_shape[1]
 
     for i in range(epochs):
         for sample in data_loader:
@@ -37,19 +40,20 @@ def train(
             # Here we create the noise input for generator and pass it through the generator to create our fake data
             noise = torch.randint(0, 2, size=(batch_size, input_length)).float()
             generated_data = generator(noise)
+            generated_data = generated_data.view(batch_size, 1, img_w, img_h) # resize to be image shape with channel 1
 
             # Here we get real data
-            true_data = sample['input']
+            true_data = sample[0]
             # TODO: create the labels for the true data, this should be a tensor of size batch_size.
             # Remember we are doing binary classification here.
-            true_labels = torch.tensor(1).repeat(batch_size).float()
+            true_labels = None
 
             # TODO: Train the generator
             # AKA do a forward pass and get the loss (loss function is defined above)
             # We invert the labels here and don't train the discriminator because we want the generator
             # to make things the discriminator classifies as true.
-            generator_discriminator_out = discriminator(generated_data)
-            generator_loss = loss(generator_discriminator_out, true_labels)
+            generator_discriminator_out = None
+            generator_loss = None
             
             # Notice that we do not call .step on the discriminator_optimizer
             # This is so that we do not update the parameters of the discriminator when training the generator
@@ -60,8 +64,8 @@ def train(
             # AKA do a forward pass and get the loss on the true data
             # We don't invert the labels here, why?
             discriminator_optimizer.zero_grad()
-            true_discriminator_out = discriminator(true_data)
-            true_discriminator_loss = loss(true_discriminator_out, true_labels)
+            true_discriminator_out = None
+            true_discriminator_loss = None
 
             # Now we do a forward pass using the fake data and get the loss with inverted labels
             # We add .detach() here so that we do not backprop into the generator when we train the discriminator
@@ -75,7 +79,9 @@ def train(
             
             wandb.log({"Generator Loss": generator_loss, 
                     "Discriminator Loss (on real images)" : true_discriminator_loss,
-                    "Discriminator Loss (on fake images)": generator_discriminator_loss})
+                    "Discriminator Loss (on fake images)": generator_discriminator_loss,
+                    "Discriminator Guess (on fake images)": torch.mean(generator_discriminator_out),
+                    "Discriminator Guess (on real images)": torch.mean(true_discriminator_out)})
 
     return generator, discriminator
 
